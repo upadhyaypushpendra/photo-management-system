@@ -8,7 +8,7 @@ const PAGE_SIZE = 30;
 const photosCollectionRef = db.collection("photos");
 const albumsCollectionRef = db.collection("albums");
 
-// get all photos
+// Get photos
 router.get("/photos", async (req, res) => {
   try {
     let pageSize = parseInt(req.query.pageSize) || PAGE_SIZE;
@@ -50,14 +50,13 @@ router.get("/photos", async (req, res) => {
 
     // send photos in response
     res.json(createResponse(true, photos));
-
   } catch (error) {
     // send error in response
     res.status(500).json(createResponse(false, error.message));
   }
 });
 
-// get photo by id
+// Get photo by id
 router.get("/photos/:id", async (req, res) => {
   try {
     const photoId = req.params.id;
@@ -67,7 +66,12 @@ router.get("/photos/:id", async (req, res) => {
     const photo = await photosCollectionRef.doc(photoId).get();
 
     if (!photo.exists) {
-      throw new Error("photo doesn't exist.");
+      res
+        .status(404)
+        .json(
+          createResponse(false, `Photo with ID ${photoId} doesn't exists.`)
+        );
+      return;
     }
 
     // send photo in response
@@ -83,41 +87,15 @@ router.get("/photos/:id", async (req, res) => {
   }
 });
 
-//get a photo by id
-router.get("/photos/:id", async (req, res) => {
-  try {
-    const photoId = req.params.id;
-
-    if (!photoId) {
-      res.status(400).json(createResponse(false,`photo ID is required.`));
-      return;
-    }
-
-    const photoRef = photosCollectionRef.doc(photoId);
-
-    const photo = await photoRef.get();
-
-    if (!photo.exists) {
-      res.status(404).json(createResponse(false,`Not found.`));
-      return;
-    }
-
-    res.json({
-      id: photo.id,
-      ...photo.data(),
-    });
-  } catch (error) {
-    // send error in response
-    res.status(500).json(createResponse(false, error.message));
-  }
-});
-
-// add a photo
+// Create a photo
 router.post("/photos", async (req, res) => {
   try {
-    const { name, description, albums, photoURL, isActive } = req.body;
-    
+    let { name, description, albums, photoURL, isActive } = req.body;
+
     if (!name) throw new Error("Name is required");
+    if(!albums) albums=[];
+    if(!isActive) isActive = true;
+    if(!description) description="";
 
     const data = {
       name,
@@ -140,8 +118,7 @@ router.post("/photos", async (req, res) => {
         .set({ ...photo.data() });
     });
 
-    res.json(createResponse(true,{ id: photoRef.id, ...photo.data() }));
-
+    res.json(createResponse(true, { id: photoRef.id, ...photo.data() }));
   } catch (error) {
     // send error in response
     res.status(500).json(createResponse(false, error.message));
@@ -170,7 +147,11 @@ router.patch("/photos/:id", async (req, res) => {
     const photo = await photoRef.get();
 
     if (!photo.exists) {
-      res.status(404).json(createResponse(false,`Not found.`));
+      res
+        .status(404)
+        .json(
+          createResponse(false, `Photo with ID ${photoId} doesn't exists.`)
+        );
       return;
     }
 
@@ -189,7 +170,7 @@ router.patch("/photos/:id", async (req, res) => {
 
       albumsToAdd.forEach(async (albumId) => {
         const albumRef = albumsCollectionRef.doc(albumId);
-        const result = await albumRef
+        await albumRef
           .collection("photos")
           .doc(photo.id)
           .set({ ...photo.data() });
@@ -201,7 +182,6 @@ router.patch("/photos/:id", async (req, res) => {
     const newPhoto = await photoRef.get();
 
     res.json(createResponse(true, { id: photoId, ...newPhoto.data() }));
-
   } catch (error) {
     // send error in response
     res.status(500).json(createResponse(false, error.message));
@@ -220,7 +200,11 @@ router.delete("/photos/:id", async (req, res) => {
     let photo = await photoRef.get();
 
     if (!photo.exists) {
-      res.status(404).json(createResponse(false,`Not found.`));
+      res
+        .status(404)
+        .json(
+          createResponse(false, `Photo with ID ${photoId} doesn't exists.`)
+        );
       return;
     }
 

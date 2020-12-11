@@ -7,6 +7,7 @@ const router = Router();
 const albumsCollectionRef = db.collection("albums");
 const phtoossCollectionRef = db.collection("photos");
 const albumCountDocRef = db.collection("config").doc('albumCount');
+const BATCH_SIZE = 25;
 
 // Get all albums
 router.get("/albums", async (req, res) => {
@@ -217,7 +218,7 @@ router.delete("/albums/:id", async (req, res) => {
     });
 
     // delete photos subcollection from this album
-    await deleteCollection(db,`albums/${albumId}/photos`);
+    await deleteCollection(db,`albums/${albumId}/photos`,BATCH_SIZE);
 
     // delete album
     await albumRef.delete();

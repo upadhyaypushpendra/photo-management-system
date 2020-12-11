@@ -10,10 +10,11 @@ const { initializeApp } = require("firebase-admin");
 const main = express();
 
 async function init(){
-    let albumsQuerySnapshop = await db.collection('albums').get();
-    db.collection('config').doc('albumCount').set({count : albumsQuerySnapshop.size});
+    let albumsQuerySnapshot = await db.collection('albums').get();
+    db.collection('config').doc('albumCount').set({count : albumsQuerySnapshot.size});
 }
-init();
+await init();
+
 main.use(bodyParser.json());
 main.use("/api/v1", albumsRouter);
 main.use("/api/v1",photosRouter);

@@ -1,31 +1,12 @@
 const Router = require("express").Router;
-const { createResponse } = require("../utils/responseUtil");
+const { createResponse,deleteCollection } = require("../utils/util");
 const db = require("./../dbConnection");
 
 const router = Router();
 
 const albumsCollectionRef = db.collection("albums");
+const phtoossCollectionRef = db.collection("photos");
 const albumCountDocRef = db.collection("config").doc('albumCount');
-
-// function to reorder albums between 2 positions
-function reorderAlbums(position1,position2){
-  let startPosition, endPosition;
-  if(position1 === position2) return;
-  else if (position1 < position2) {
-    startPosition = position1;
-    endPosition = position2;
-  } else {
-    endPosition = position1;
-    startPosition = position2;
-  }
-  let albumQuerySnapshot = await albumsCollectionRef.where('displayPosition','<=',startPosition).where('displayPosition','>=',endPosition).orderBy('displayPosition').get();
-  let displayPosition = startPosition;
-  albumQuerySnapshot.forEach(doc => {
-    await albumsCollectionRef.doc(doc.id).update({displayPosition : displayPosition},{merge : true});
-    displayPosition++;
-  });
-  
-};
 
 // Get all albums
 router.get("/albums", async (req, res) => {
@@ -183,7 +164,7 @@ router.patch("/albums/:id", async (req, res) => {
     }
 
     if(displayPosition && album.data().displayPosition !== displayPosition){
-      reorderAlbums(displayPosition,album.data().displayPosition);
+      reorderAlbums(albumsCollectionRef,displayPosition,album.data().displayPosition);
     }
 
     await albumRef.update(data);
@@ -223,13 +204,31 @@ router.delete("/albums/:id", async (req, res) => {
         );
       return;
     }
-    let position = album.data().displayPosition;
-    let totalAlbums = (await albumCountDocRef.get()).data().count;
-    
+
+    // delete this albumId from all the photos
+    let photos = await albumRef.collection('photos').get();
+    photos.forEach(doc => {
+      // get photo from photos collection
+      let photoRef =  phtoossCollectionRef.doc(doc.id);
+      let photo = await photoRef.get();
+
+      // remove albumId from photo
+      await photoRef.update({albums : photo.data().albums.filter(id=> id !== albumId)},{merge : true});
+    });
+
+    // delete photos subcollection from this album
+    await deleteCollection(db,`albums/${albumId}/photos`);
+
+    // delete album
     await albumRef.delete();
-    reorderAlbums(position,totalAlbums);    
+    
+    // reorder albums after delete
+    let position = album.data().displayPosition;
+    let totalAlbums = (await albumCountDocRef.get()).data().count;    
+    await reorderAlbums(albumsCollectionRef,position,totalAlbums);
     
     res.json(createResponse(true, `Album with ID : ${albumId} deleted.`));
+
   } catch (error) {
     res.status(500).json(createResponse(false, error.message));
   }
@@ -261,7 +260,7 @@ router.post("/alubms/reorder", async (req, res) => {
       return;
     }
 
-    reorderAlbums(displayPosition,album.data().displayPosition);
+    reorderAlbums(albumsCollectionRef,displayPosition,album.data().displayPosition);
 
   } catch (error) {
     res.status(500).json(createResponse(false, error.message));

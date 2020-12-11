@@ -208,7 +208,7 @@ router.delete("/albums/:id", async (req, res) => {
 
     // delete this albumId from all the photos
     let photos = await albumRef.collection('photos').get();
-    photos.forEach(doc => {
+    photos.forEach( async doc => {
       // get photo from photos collection
       let photoRef =  phtoossCollectionRef.doc(doc.id);
       let photo = await photoRef.get();

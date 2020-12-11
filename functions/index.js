@@ -13,7 +13,7 @@ async function init(){
     let albumsQuerySnapshot = await db.collection('albums').get();
     db.collection('config').doc('albumCount').set({count : albumsQuerySnapshot.size});
 }
-await init();
+init();
 
 main.use(bodyParser.json());
 main.use("/api/v1", albumsRouter);

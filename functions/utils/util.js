@@ -24,7 +24,7 @@ module.exports.reorderAlbums = async (collection,position1,position2)=>{
     }
     let albumQuerySnapshot = await collection.where('displayPosition','<=',startPosition).where('displayPosition','>=',endPosition).orderBy('displayPosition').get();
     let displayPosition = startPosition;
-    albumQuerySnapshot.forEach(doc => {
+    albumQuerySnapshot.forEach( async doc => {
       await collection.doc(doc.id).update({displayPosition : displayPosition},{merge : true});
       displayPosition++;
     });

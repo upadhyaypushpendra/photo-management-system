@@ -1,6 +1,6 @@
 const Router = require("express").Router;
 const db = require("./../dbConnection");
-const createResponse = require("./../utils/responseUtil").createResponse;
+const {createResponse} = require("./../utils/util");
 
 const router = Router();
 const PAGE_SIZE = 30;

@@ -11,26 +11,6 @@ module.exports.createResponse = (success,payload)=>{
     }
 };
 
-// reorder albums between 2 positions
-module.exports.reorderAlbums = async (collection,position1,position2)=>{
-    let startPosition, endPosition;
-    if(position1 === position2) return;
-    else if (position1 < position2) {
-      startPosition = position1;
-      endPosition = position2;
-    } else {
-      endPosition = position1;
-      startPosition = position2;
-    }
-    let albumQuerySnapshot = await collection.where('displayPosition','<=',startPosition).where('displayPosition','>=',endPosition).orderBy('displayPosition').get();
-    let displayPosition = startPosition;
-    albumQuerySnapshot.forEach( async doc => {
-      await collection.doc(doc.id).update({displayPosition : displayPosition},{merge : true});
-      displayPosition++;
-    });
-    
-  };
-  
   // [START delete_collection]
   // [START firestore_data_delete_collection]
   module.exports.deleteCollection = async (db, collectionPath, batchSize)=> {

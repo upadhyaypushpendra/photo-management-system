@@ -3,9 +3,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const db = require('./dbConnection');
 
-const albumsRouter = require("./routers/albums");
-const photosRouter = require("./routers/photos");
-const { initializeApp } = require("firebase-admin");
+const albumsRouter = require("./routes/album.route");
+const photosRouter = require("./routes/photo.route");
 
 const main = express();
 

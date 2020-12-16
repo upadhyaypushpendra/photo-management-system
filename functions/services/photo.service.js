@@ -1,22 +1,32 @@
 const photoModel = require("./../models/photo.model");
+const albumPhotosService = require("./albumPhotos.service");
 const MAX_LIMIT = 30;
 
-module.exports.findById = async function (id,callback) {
-  const errors = []
-  if(!id){
-    errors.push({id : 'Required'});
+module.exports.findById = async function (id, callback) {
+  const errors = [];
+  if (!id) {
+    errors.push({ id: "Required" });
   }
-  if(errors.length > 0){
-    callback(errors,null);
+  if (errors.length > 0) {
+    callback(errors, null);
     return;
   }
   const photo = await photoModel.findById(id);
-  callback(null,photo);
+  if (photo.exists) {
+    callback(null, photo);
+  } else {
+    errors.push({ id: `Photo with ID : ${id} not found` });
+    callback(errors, null);
+  }
 };
 
-module.exports.findByLastIdAndLimit = async function (lastId, limit, callback) {
-  let limit = lastId || MAX_LIMIT;
-  const photos = [];
+module.exports.findByLastIdAndLimit = async function (
+  lastId,
+  pageSize,
+  callback
+) {
+  let limit = pageSize || MAX_LIMIT;
+  let photos = [];
   let last = null;
   // Check query contains last
   if (lastId) {
@@ -31,7 +41,6 @@ module.exports.findByLastIdAndLimit = async function (lastId, limit, callback) {
   photos = await photoModel.findByLastIdAndLimit(last, limit);
   callback(null, photos);
 };
-
 
 module.exports.filter = async function (filter) {
   let errors = [];
@@ -53,14 +62,15 @@ module.exports.filter = async function (filter) {
   );
   callback(null, photos);
 };
- 
-module.exports.create = async function(photo,callback){
+
+module.exports.create = async function (photo, callback) {
   let { name, description, albums, photoURL, isActive } = photo;
 
+  if (!photo) throw new Error("photo is required");
   if (!name) throw new Error("Name is required");
-  if(!albums) albums=[];
-  if(!isActive) isActive = true;
-  if(!description) description="";
+  if (!albums) albums = [];
+  if (!isActive) isActive = true;
+  if (!description) description = "";
 
   const data = {
     name,
@@ -72,16 +82,16 @@ module.exports.create = async function(photo,callback){
     dateModified: Date.now(),
   };
 
-  const photo = await photoModel.create(data);
-  data.id = photo.id;
+  const createdPhoto = await photoModel.create(data);
+  data.id = createdPhoto.id;
   albums.forEach(async (albumId) => {
-    await albumPhotosService.addPhoto(albumId,data,(error,result)=>{
-      if(error) {
-        // Error in adding photo to photos subcollection 
+    await albumPhotosService.addPhoto(albumId, data, (error, result) => {
+      if (error) {
+        // Error in adding photo to photos subcollection
       }
     });
   });
-  callback(null,data);
+  callback(null, data);
 };
 
 module.exports.update = async function (id, newPhoto, callback) {
@@ -97,13 +107,13 @@ module.exports.update = async function (id, newPhoto, callback) {
   }
   const data = {};
 
-  if (newPhoto.name) data.name = name;
-  if (newPhoto.description) data.description = description;
-  if (newPhoto.albums) data.albums = albums;
-  if (newPhoto.photoURL) data.photoURL = photoURL;
-  if (newPhoto.isActive) data.isActive = isActive;
+  if (newPhoto.name) data.name = newPhoto.name;
+  if (newPhoto.description) data.description = newPhoto.description;
+  if (newPhoto.albums) data.albums = newPhoto.albums;
+  if (newPhoto.photoURL) data.photoURL = newPhoto.photoURL;
+  if (newPhoto.isActive) data.isActive = newPhoto.isActive;
   data.dateModified = Date.now();
-  
+
   const updatedPhoto = await photoModel.update(id, data);
 
   if (newPhoto.albums) {
@@ -125,11 +135,16 @@ module.exports.update = async function (id, newPhoto, callback) {
       });
     });
     albumsToUpdate.forEach(async (albumId) => {
-      await albumPhotosService.updatePhoto(albumId,id,updatedPhoto.data(), (error, result) => {
-        if (error) {
-          // Unable to delete photo, log to the logs
+      await albumPhotosService.updatePhoto(
+        albumId,
+        id,
+        updatedPhoto.data(),
+        (error, result) => {
+          if (error) {
+            // Unable to delete photo, log to the logs
+          }
         }
-      });
+      );
     });
     albumsToAdd.forEach(async (albumId) => {
       await albumPhotosService.addPhoto(albumId, {
@@ -137,28 +152,31 @@ module.exports.update = async function (id, newPhoto, callback) {
         ...updatedPhoto.data(),
       });
     });
-
   }
-  callback(null, updatedPhoto);
+  callback(null, {
+    id,
+    ...updatedPhoto.data(),
+  });
 };
 
-module.exports.delete = async function(photoId,callback){
-  const errors = []
-  if(!id){
-    errors.push({id : 'Required'});
-  }
-  const photo = await photoModel.findById(photoId);
-  if (!photo.exists) {
-    errors.push({ id: `Photo with ID : ${photoId} doesn't exists.` });
+module.exports.delete = async function (id, callback) {
+  const errors = [];
+  if (!id) {
+    errors.push({ id: "Required" });
+    callback(errors, null);
     return;
+  }
+  const photo = await photoModel.findById(id);
+  if (!photo.exists) {
+    errors.push({ id: `Photo with ID : ${id} doesn't exists.` });
   }
   if (errors.length > 0) {
     callback(errors, null);
     return;
-  }  
-  photo.data().albums.forEach(albumId=>{
-    await albumPhotosService.deletePhoto(albumId,photoid);
+  }
+  photo.data().albums.forEach(async (albumId) => {
+    await albumPhotosService.deletePhoto(albumId, id, (err, result) => {});
   });
-  await photoModel.delete(photoId);
-  callback(null, `Photo with ID : ${photoId} deleted.`);
+  await photoModel.delete(id);
+  callback(null, `Photo with ID : ${id} deleted.`);
 };

@@ -1,7 +1,12 @@
 const db = require("./../dbConnection");
 
 module.exports.findAll = async (albumId) =>{
-    return await db.collection('albums').doc(albumId).collection('photos').get();
+    const querySnapshot = await db.collection(`albums/${albumId}/photos`).get();
+    const photos = [];
+    querySnapshot.forEach((doc)=>{
+        photos.push({ id : doc.id,...doc.data()});
+    });
+    return photos;
 };
 
 module.exports.addPhoto = async (albumId,photo) =>{

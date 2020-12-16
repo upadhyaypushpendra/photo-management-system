@@ -6,7 +6,7 @@ module.exports.findAll = async function() {
 };
 
 module.exports.findByLastIdAndLimit = async function (startAfter, limit) {
-  const photoQuerySnapshot = null;
+  let photoQuerySnapshot = null;
   const photos = [];
   if (startAfter) {
     photoQuerySnapshot = await photosCollectionRef
@@ -33,7 +33,9 @@ module.exports.filter = async function (filterObject) {
   return await photosCollectionRef.where(filterObject.field,filterObject.operator,filterObject.value).get();
 }
 module.exports.findById = async function (id) {
-  return await photosCollectionRef.doc(id).get();
+  const photoRef = photosCollectionRef.doc(id);
+  const photo = await photoRef.get();
+  return photo;
 };
 
 module.exports.create = async function (photo) {

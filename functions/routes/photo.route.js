@@ -1,3 +1,4 @@
+const { Router } = require("express");
 const photoService = require("./../services/photo.service");
 
 const {
@@ -5,6 +6,7 @@ const {
   failureResponse,
 } = require("./../utils/response.util");
 
+const router = Router();
 // Get photos
 router.get("/photos", async (req, res) => {
   try {
@@ -71,3 +73,4 @@ router.delete("/photos/:id",async (req,res)=>{
   }
 });
 
+module.exports = router;

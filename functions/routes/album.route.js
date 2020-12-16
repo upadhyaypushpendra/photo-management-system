@@ -3,12 +3,13 @@ const { successResponse, failureResponse } = require("../utils/response.util");
 const { createResponse } = require("../utils/util");
 const albumService = require("./../services/album.service");
 
+const router = Router();
 // Get all albums
 router.get("/albums", async (req, res) => {
   try {
     albumService.findAll((error, result) => {
       if (error) failureResponse("Unable to fetch albums.", null, res);
-      else successResponse("Albums fetched.", albums, res);
+      else successResponse("Albums fetched.", result, res);
     });
   } catch (error) {
     failureResponse(error.message, null, res);

@@ -9,9 +9,9 @@ module.exports.findAll = async (callback) => {
   callback(null, albums);
 };
 
-module.exports.findById = async (id, callback) => {
+module.exports.findById = async (albumId, callback) => { 
   const errors = [];
-  if (id) {
+  if (!albumId) {
     errors.push({ id: "Required." });
   }
   if (errors.length > 0) {
@@ -19,7 +19,7 @@ module.exports.findById = async (id, callback) => {
     return;
   }
 
-  const album = await albumModel.findById(req.params.id);
+  const album = await albumModel.findById(albumId);
   if (album) {
     callback(null, { id: album.id, ...album.data() });
   } else {
@@ -67,11 +67,11 @@ module.exports.create = async (album, callback) => {
     dateModified: Date.now(), // Assuming Modified time to be added at server side
   };
 
-  const album = await albumModel.create(albumData);
+  const createdAlbum = await albumModel.create(albumData);
 
   await albumCountService.setCount(albumCount + 1);
 
-  callback(null, album);
+  callback(null, createdAlbum);
 };
 
 module.exports.update = async (albumId, albumData, callback) => {
@@ -83,7 +83,6 @@ module.exports.update = async (albumId, albumData, callback) => {
     callback(errors, null);
     return;
   }
-
   const {
     name,
     description,
@@ -161,12 +160,11 @@ module.exports.delete = async (id, callback) => {
 };
 
 // Reorder albums
-module.exports.reorderAlbums = async (album, callback) => {
-  const { albumId, displayPosition } = album;
+module.exports.reorderAlbums = async (albumData, callback) => {
   const errors = [];
-  if (!albumId) errors.push({ albumId: "albumId Required." });
+  if (!albumData.albumId) errors.push({ albumId: "albumId Required." });
 
-  if (!displayPosition)
+  if (!albumData.displayPosition)
     errors.push({ displayPosition: "displayPostion Required." });
 
   if (errors.length > 0) {
@@ -174,7 +172,7 @@ module.exports.reorderAlbums = async (album, callback) => {
     return;
   }
 
-  let album = albumModel.findById(albumId);
+  let album = albumModel.findById(albumData.albumId);
   if (!album.exists) {
     callback(`Album with ID ${albumId} doesn't exists.`, null);
     return;
@@ -190,7 +188,7 @@ module.exports.getPhotosById = async (albumId,callback)=>{
     errors.push({id : "Required"});
   }
   let album = await albumModel.findById(albumId);
-  if(!album.exists()) {
+  if(!album.exists) {
     errors.push({id : `Alubm with id : ${albumId} doesn't exists.`});
   }
   if(errors.length > 0) {
@@ -199,6 +197,6 @@ module.exports.getPhotosById = async (albumId,callback)=>{
   }
   await albumPhotosService.findAll(albumId,(error,result)=>{
         if(error) callback(error,null);
-        else callback(result,null);
+        else callback(null,result);
   });
  };

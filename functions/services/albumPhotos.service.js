@@ -13,21 +13,21 @@ module.exports.findAll = async function (albumId, callback) {
   }
 };
 
-module.exports.addPhoto = async function (albumId, photo, callback) {
+module.exports.addPhoto = async function (albumId, photoData, callback) {
     let errors = [];
     if (!albumId) {
       errors.push({ id: "Required" });
     }
-    if(!photo){
-        errors.push({ photo: "Required" });
+    if(!photoData){
+        errors.push({ photoData: "Required" });
     }
-    if(!photo.id){
-        errors.push({ photo: "photo id Required" });
+    if(!photoData.id){
+        errors.push({ photoData: "photoData id Required" });
     }
     if (errors.length > 0) {
       callback(errors, null);
     } else {
-      let photo = await albumPhotosModel.addPhoto(albumId,photo);
+      let photo = await albumPhotosModel.addPhoto(albumId,photoData);
       callback(null, photo);
     } 
 };

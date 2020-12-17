@@ -18,7 +18,7 @@ module.exports.findById = async function (id) {
   if (photo.exists) {
     return {
       statusCode: 200,
-      data: photo,
+      data: { id, ...photo.data() },
     };
   } else {
     return {

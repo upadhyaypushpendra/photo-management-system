@@ -1,33 +1,46 @@
 const albumModel = require("./../models/album.model");
 
-const albumCountService = require("./albumCount.service");
+const configService = require("../system/config/config.service");
 const photoService = require("./photo.service");
 const albumPhotosService = require("./albumPhotos.service");
 
-module.exports.findAll = async (callback) => {
+module.exports.findAll = async () => {
   const albums = await albumModel.findAll();
-  callback(null, albums);
+  return {
+    statusCode: 200,
+    data: albums,
+  };
 };
 
-module.exports.findById = async (albumId, callback) => { 
+module.exports.findById = async (albumId) => {
   const errors = [];
   if (!albumId) {
     errors.push({ id: "Required." });
   }
   if (errors.length > 0) {
-    callback(errors, null);
-    return;
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
   }
 
   const album = await albumModel.findById(albumId);
   if (album) {
-    callback(null, { id: album.id, ...album.data() });
+    return {
+      statusCode: 200,
+      data: { id: album.id, ...album.data() },
+    };
   } else {
-    callback(`Album with ID : ${albumId} doesn't exists.`, null);
+    return {
+      error: true,
+      statusCode: 404,
+      data: `Album with ID : ${albumId} doesn't exists.`,
+    };
   }
 };
 
-module.exports.create = async (album, callback) => {
+module.exports.create = async (album) => {
   const { name, description, coverImageURL, isActive } = req.body;
 
   const errors = [];
@@ -50,11 +63,14 @@ module.exports.create = async (album, callback) => {
     isActive = true;
   }
   if (errors.length > 0) {
-    callback(errors, null);
-    return;
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
   }
 
-  let albumCount = await albumCountService.getCount();
+  let albumCount = (await configService.getAlbumCount()).data;
   const displayPosition = albumCount + 1;
 
   const albumData = {
@@ -69,19 +85,24 @@ module.exports.create = async (album, callback) => {
 
   const createdAlbum = await albumModel.create(albumData);
 
-  await albumCountService.setCount(albumCount + 1);
-
-  callback(null, createdAlbum);
+  await configService.setAlbumCount(albumCount + 1);
+  return {
+    statusCode: 201,
+    data: createdAlbum,
+  };
 };
 
-module.exports.update = async (albumId, albumData, callback) => {
+module.exports.update = async (albumId, albumData) => {
   let errors = [];
   if (!albumId) {
     errors.push({ id: "Required" });
   }
   if (errors.length > 0) {
-    callback(errors, null);
-    return;
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
   }
   const {
     name,
@@ -106,26 +127,39 @@ module.exports.update = async (albumId, albumData, callback) => {
       //reorderAlbums(albumsCollectionRef,displayPosition,album.data().displayPosition);
     }
     const updatedAlbum = albumModel.update(data);
-    callback(null, updatedAlbum);
+    return {
+      statusCode: 200,
+      data: updatedAlbum,
+    };
   } else {
-    callback(`Album with ID : ${albumId} doesn't exists.`, null);
+    return {
+      error: true,
+      statusCode: 400,
+      data: `Album with ID : ${albumId} doesn't exists.`,
+    };
   }
 };
 
-module.exports.delete = async (id, callback) => {
+module.exports.delete = async (id) => {
   const errors = [];
   const albumId = req.params.id;
   if (albumId) {
     errors.push({ id: "Required." });
   }
+  if (errors.length > 0) {
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
+  }
   const album = await albumModel.findById(albumId);
   if (!album.exists) {
-    errors.push({ id: `Album with ID : ${albumId} doesn't exists.` });
-    return;
-  }
-  if (errors.length > 0) {
-    callback(errors, null);
-    return;
+    return {
+      error: true,
+      statusCode: 404,
+      data: `Album with ID : ${albumId} doesn't exists.`,
+    };
   }
 
   // delete this albumId from all the photos
@@ -134,33 +168,54 @@ module.exports.delete = async (id, callback) => {
     operator: "array-contains",
     value: albumId,
   };
-  let photos = null;
-  photoService.filter(photoFilter, (error, result) => {
-    if (!error) photos = result;
-  });
-  if (photos) {
-    photos.forEach(async (doc) => {
-      // remove albumId from photo
-      photoService.update(
-        photo.id,
-        { albums: photo.data().albums.filter((id) => id !== albumId) },
-        (err, result) => {}
-      );
-    });
+  let photos = await photoService.filter(photoFilter);
+  if (photos.error) {
+    return photos;
   }
+
+  photos.data.forEach(async (doc) => {
+    // remove albumId from photo
+    await photoService.update(photo.id, {
+      albums: photo.data().albums.filter((id) => id !== albumId),
+    });
+  });
 
   // delete album
   await albumModel.delete(albumId);
 
   //reorder albums
   let currentAlbumPosition = album.data().displayPosition;
-  let totalAlbums = await albumCountService.getCount();
+  let totalAlbums = (await configService.getAlbumCount()).data;
   await albumModel.reorderAlbums(currentAlbumPosition, totalAlbums);
-  callback(null, `Album with ID : ${albumId} deleted.`);
+  return {
+    statusCode: 200,
+    data: `Album with ID : ${albumId} deleted.`,
+  };
 };
 
 // Reorder albums
-module.exports.reorderAlbums = async (albumData, callback) => {
+module.exports.reorderAlbums = async (position1, position2) => {
+  const errors = [];
+  if (!position1) errors.push({ position1: "Required." });
+  if (!position2) errors.push({ position2: "Required." });
+
+  if (errors.length > 0) {
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
+  }
+
+  await albumModel.reorderAlbums(position1, position2);
+  return {
+    statusCode: 200,
+    data: {},
+  };
+};
+
+// Reorder an album
+module.exports.reorderAlbum = async (albumData) => {
   const errors = [];
   if (!albumData.albumId) errors.push({ albumId: "albumId Required." });
 
@@ -168,35 +223,56 @@ module.exports.reorderAlbums = async (albumData, callback) => {
     errors.push({ displayPosition: "displayPostion Required." });
 
   if (errors.length > 0) {
-    callback(errors, null);
-    return;
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
   }
 
   let album = albumModel.findById(albumData.albumId);
   if (!album.exists) {
-    callback(`Album with ID ${albumId} doesn't exists.`, null);
-    return;
+    return {
+      error: true,
+      statusCode: 404,
+      data: `Album with ID ${albumData.albumId} doesn't exists.`,
+    };
   }
 
-  await albumModel.reorderAlbums(displayPosition, album.data().displayPosition);
-  callback(null, album);
+  const result = await this.reorderAlbums(
+    albumData.displayPosition,
+    album.data().displayPosition
+  );
+  if (!result.error) {
+    return {
+      statusCode: 200,
+      data: albumData,
+    };
+  } else {
+    return result;
+  }
 };
 
-module.exports.getPhotosById = async (albumId,callback)=>{ 
+module.exports.getPhotosById = async (albumId) => {
   let errors = [];
-  if(!albumId) {
-    errors.push({id : "Required"});
+  if (!albumId) {
+    errors.push({ id: "Required" });
+  }
+  if (errors.length > 0) {
+    return {
+      error: true,
+      statusCode: 400,
+      data: errors,
+    };
   }
   let album = await albumModel.findById(albumId);
-  if(!album.exists) {
-    errors.push({id : `Alubm with id : ${albumId} doesn't exists.`});
+  if (!album.exists) {
+    return {
+      error: true,
+      statusCode: 400,
+      data: `Alubm with id : ${albumId} doesn't exists.`,
+    };
   }
-  if(errors.length > 0) {
-    callback(errors,null);
-    return;
-  }
-  await albumPhotosService.findAll(albumId,(error,result)=>{
-        if(error) callback(error,null);
-        else callback(null,result);
-  });
- };
+  const photos = await albumPhotosService.findAll(albumId);
+  return photos;
+};

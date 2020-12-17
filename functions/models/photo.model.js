@@ -1,54 +1,54 @@
-const db = require("./../dbConnection");
+const firebaseManager = require("./../system/firebase/firebase.manager");
 const photosCollectionRef = db.collection("photos");
 
-module.exports.findAll = async function() {
-  return await photosCollectionRef.get();
-};
+const COLLECTION = "photos";
 
+module.exports.findAll = async function () {
+  return await firebaseManager.find(COLLECTION);
+};
 module.exports.findByLastIdAndLimit = async function (startAfter, limit) {
-  let photoQuerySnapshot = null;
-  const photos = [];
-  if (startAfter) {
-    photoQuerySnapshot = await photosCollectionRef
-      .orderBy("dateModified")
-      .limit(limit)
-      .get();
-  } else {
-    photoQuerySnapshot = await photosCollectionRef
-      .orderBy("dateModified")
-      .startAfter(startAfter)
-      .limit(limit)
-      .get();
-  }
-  photoQuerySnapshot.forEach((doc) => {
-    photos.push({
-      id: doc.id,
-      ...doc.data(),
-    });
+  const filters = [];
+  filters.push({
+    operation: firebaseManager.operations.ORDER_BY,
+    value: "dateModified",
   });
-  return photos;
+
+  if (startAfter) {
+    filters.push({
+      operation: firebaseManager.operations.START_AFTER,
+      value: startAfter,
+    });
+  }
+
+  filters.push({
+    operation: firebaseManager.operations.LIMIT,
+    value: limit || 30,
+  });
+  return await firebaseManager.find(COLLECTION, filters);
 };
 
 module.exports.filter = async function (filterObject) {
-  return await photosCollectionRef.where(filterObject.field,filterObject.operator,filterObject.value).get();
-}
+  return await firebaseManager.find(COLLECTION, [
+    {
+      operation: firebaseManager.operations.WHERE,
+      fieldRef: filterObject.field,
+      opStr: filterObject.operator,
+      value: filterObject.value,
+    },
+  ]);
+};
 module.exports.findById = async function (id) {
-  const photoRef = photosCollectionRef.doc(id);
-  const photo = await photoRef.get();
-  return photo;
+  return await firebaseManager.findById(COLLECTION, id);
 };
 
 module.exports.create = async function (photo) {
-  const photoRef = await photosCollectionRef.add(photo);
-  return await photoRef.get();
+  return await firebaseManager.create(COLLECTION, photo);
 };
 
 module.exports.update = async function (id, photo) {
-  const photoRef = photosCollectionRef.doc(id);
-  await photoRef.update(photo);
-  return await photoRef.get();
+  return firebaseManager.updateById(COLLECTION, id, photo);
 };
 
 module.exports.delete = async function (id) {
-  await photosCollectionRef.doc(id).delete();
+  await firebaseManager.deleteById(COLLECTION, id);
 };

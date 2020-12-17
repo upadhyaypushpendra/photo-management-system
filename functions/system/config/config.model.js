@@ -1,12 +1,9 @@
-const db = require('./../../dbConnection');
-const configCollectionRef = db.collection("config");
-
-const albumCountDocRef = configCollectionRef.doc('albumCount');
+const firebaseManager = require('./../firebase/firebase.manager');
 
 module.exports.getAlbumCount = async function(){
-    const albumCount = await albumCountDocRef.get();
+    const albumCount = await firebaseManager.findById('config','albumCount');
     return albumCount.data().count;
 }
 module.exports.setAlbumCount = async function(count){
-    await albumCountDocRef.set({count});
+    await firebaseManager.updateById('config','albumCount',{count});
 };

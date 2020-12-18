@@ -106,14 +106,14 @@ module.exports.create = async function (photo) {
     dateModified: Date.now(),
   };
 
-  const createdPhoto = await photoModel.create(data);
-  data.id = createdPhoto.id;
+  let createdPhoto = await photoModel.create(data);
+
   albums.forEach(async (albumId) => {
-    await albumPhotosService.addPhoto(albumId, data);
+    await albumPhotosService.addPhoto(albumId, createdPhoto);
   });
   return {
     statusCode: 200,
-    data,
+    data: createdPhoto,
   };
 };
 
@@ -158,21 +158,15 @@ module.exports.update = async function (id, newPhoto) {
       await albumPhotosService.deletePhoto(albumId, id);
     });
     albumsToUpdate.forEach(async (albumId) => {
-      await albumPhotosService.updatePhoto(albumId, id, updatedPhoto.data());
+      await albumPhotosService.updatePhoto(albumId,updatedPhoto);
     });
     albumsToAdd.forEach(async (albumId) => {
-      await albumPhotosService.addPhoto(albumId, {
-        id,
-        ...updatedPhoto.data(),
-      });
+      await albumPhotosService.addPhoto(albumId, updatedPhoto);
     });
   }
   return {
     statusCode: 200,
-    data: {
-      id,
-      ...updatedPhoto.data(),
-    },
+    data: updatedPhoto,
   };
 };
 

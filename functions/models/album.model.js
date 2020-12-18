@@ -1,12 +1,10 @@
 const firebaseManager = require("./../system/firebase/firebase.manager");
-const db = require("./../dbConnection");
 const { deleteCollection } = require("./../utils/util");
-const albumsCollectionRef = db.collection("albums");
 const BATCH_SIZE = 25;
 const COLLECTION = "albums";
 
-module.exports.findAll = async () => {
-  return await firebaseManager.find(COLLECTION);
+module.exports.find = async (filters = []) => {
+  return await firebaseManager.find(COLLECTION, filters);
 };
 
 module.exports.findById = async (id) => {
@@ -26,35 +24,55 @@ module.exports.delete = async (id) => {
   await firebaseManager.deleteById(COLLECTION, id);
 };
 
-module.exports.reorderAlbums = async (position1, position2) => {
-  let startPosition, endPosition;
-  if (position1 === position2) return;
-  else if (position1 < position2) {
-    startPosition = position1;
-    endPosition = position2;
-  } else {
-    endPosition = position1;
-    startPosition = position2;
+module.exports.reorderAlbum = async (currentPosition, newPosition) => {
+  // both positions are same  hence nothing is required to do
+  if (currentPosition === newPosition) {
+    return;
   }
+  let startPosition = newPosition, endPosition = currentPosition;
+  if (newPosition > currentPosition) {
+    startPosition = currentPosition;
+    endPosition = newPosition;
+  }
+
+  // create filters
   let filters = [];
   filters.push({
-    operation: firebaseManager.operations.WHERE,
+    operation: firebaseManager.operations.ORDER_BY,
     fieldRef: "displayPosition",
-    opStr: firebaseManager.operators.LESS_THAN_OR_EQUAL_TO,
-    value: startPosition,
   });
   filters.push({
     operation: firebaseManager.operations.WHERE,
     fieldRef: "displayPosition",
     opStr: firebaseManager.operators.GREATER_THAN_OR_EQUAL_TO,
+    value: startPosition,
+  });
+  filters.push({
+    operation: firebaseManager.operations.WHERE,
+    fieldRef: "displayPosition",
+    opStr: firebaseManager.operators.LESS_THAN_OR_EQUAL_TO,
     value: endPosition,
   });
 
-  let albums = await firebaseManager.find(COLLECTION, filters);
-
+  let albumsToReOrder = await firebaseManager.find(COLLECTION, filters);
+  let length = albumsToReOrder.length;
+  
+  let start = 0;
+  let end = length - 1 ;
   let displayPosition = startPosition;
-  albums.forEach(async (album) => {
+
+  if(newPosition < currentPosition) {
+    await firebaseManager.updateById(COLLECTION, albumsToReOrder[end].id, { displayPosition : newPosition});
+    displayPosition+=1;
+    end-=1;
+  } else {
+    await firebaseManager.updateById(COLLECTION, albumsToReOrder[start].id, { displayPosition : newPosition});
+    start+=1;
+  }
+  
+  for (let i = start; i <= end ; i++) {
+    let album = albumsToReOrder[i];
     await firebaseManager.updateById(COLLECTION, album.id, { displayPosition });
-    displayPosition++;
-  });
+    displayPosition+=1;
+  }
 };

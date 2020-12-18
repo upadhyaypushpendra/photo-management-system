@@ -1,20 +1,25 @@
 const albumModel = require("./../models/album.model");
-
 const configService = require("../system/config/config.service");
 const photoService = require("./photo.service");
 const albumPhotosService = require("./albumPhotos.service");
 
 module.exports.findAll = async () => {
-  const albums = await albumModel.findAll();
+  const albums = await albumModel.find();
   return {
     statusCode: 200,
     data: albums,
   };
 };
-
-module.exports.findById = async (albumId) => {
+module.exports.find = async (filters) => {
+  const albums = await albumModel.find(filters);
+  return {
+    statusCode: 200,
+    data: albums,
+  };
+};
+module.exports.findById = async (id) => {
   const errors = [];
-  if (!albumId) {
+  if (!id) {
     errors.push({ id: "Required." });
   }
   if (errors.length > 0) {
@@ -25,8 +30,8 @@ module.exports.findById = async (albumId) => {
     };
   }
 
-  const album = await albumModel.findById(albumId);
-  if (album) {
+  const album = await albumModel.findById(id);
+  if (album.exists) {
     return {
       statusCode: 200,
       data: { id: album.id, ...album.data() },
@@ -35,7 +40,7 @@ module.exports.findById = async (albumId) => {
     return {
       error: true,
       statusCode: 404,
-      data: `Album with ID : ${albumId} doesn't exists.`,
+      data: `Album with ID : ${id} doesn't exists.`,
     };
   }
 };
@@ -46,7 +51,7 @@ module.exports.create = async (album) => {
   const errors = [];
 
   // Assuming album name is required.
-  if (!name) errors.push({ name: "name Required." });
+  if (!name) errors.push({ name: "Required." });
 
   if (!description) {
     // Adding empty string as default description.
@@ -88,13 +93,13 @@ module.exports.create = async (album) => {
   await configService.setAlbumCount(albumCount + 1);
   return {
     statusCode: 201,
-    data: createdAlbum,
+    data: createdAlbum
   };
 };
 
-module.exports.update = async (albumId, albumData) => {
+module.exports.update = async (id, albumData) => {
   let errors = [];
-  if (!albumId) {
+  if (!id) {
     errors.push({ id: "Required" });
   }
   if (errors.length > 0) {
@@ -121,29 +126,29 @@ module.exports.update = async (albumId, albumData) => {
 
   data.dateModified = Date.now();
 
-  const album = await albumModel.findById(albumId);
-  if (album.exists) {
-    if (displayPosition && album.data().displayPosition !== displayPosition) {
-      //reorderAlbums(albumsCollectionRef,displayPosition,album.data().displayPosition);
+  const result = await this.findById(id);
+  if (!result.error) {
+    let album = result.data();
+    if (displayPosition && album.displayPosition !== displayPosition) {
+      let result = await this.reorderAlbums(
+        album.displayPosition,
+        displayPosition
+      );
+      if (result.error) return result;
     }
-    const updatedAlbum = albumModel.update(data);
+    const updatedAlbum = await albumModel.update(data);
     return {
       statusCode: 200,
       data: updatedAlbum,
     };
   } else {
-    return {
-      error: true,
-      statusCode: 400,
-      data: `Album with ID : ${albumId} doesn't exists.`,
-    };
+    return result;
   }
 };
 
 module.exports.delete = async (id) => {
   const errors = [];
-  const albumId = req.params.id;
-  if (albumId) {
+  if (id) {
     errors.push({ id: "Required." });
   }
   if (errors.length > 0) {
@@ -153,51 +158,54 @@ module.exports.delete = async (id) => {
       data: errors,
     };
   }
-  const album = await albumModel.findById(albumId);
+  const album = await this.findById(id);
   if (!album.exists) {
     return {
       error: true,
       statusCode: 404,
-      data: `Album with ID : ${albumId} doesn't exists.`,
+      data: `Album with ID : ${id} doesn't exists.`,
     };
   }
 
-  // delete this albumId from all the photos
+  // delete this album's id from all the photos
   const photoFilter = {
     field: "albums",
     operator: "array-contains",
-    value: albumId,
+    value: id,
   };
+
   let photos = await photoService.filter(photoFilter);
   if (photos.error) {
     return photos;
   }
 
   photos.data.forEach(async (doc) => {
-    // remove albumId from photo
+    // remove this album's id from photo
     await photoService.update(photo.id, {
-      albums: photo.data().albums.filter((id) => id !== albumId),
+      albums: photo.data().albums.filter((albumId) => albumId !== id),
     });
   });
 
-  // delete album
-  await albumModel.delete(albumId);
-
-  //reorder albums
+  //reorder albums below current album
   let currentAlbumPosition = album.data().displayPosition;
   let totalAlbums = (await configService.getAlbumCount()).data;
-  await albumModel.reorderAlbums(currentAlbumPosition, totalAlbums);
+  let result = await this.reorderAlbums(currentAlbumPosition, totalAlbums);
+  if (result.error) return result;
+
+  // delete album
+  await albumModel.delete(id);
+
   return {
     statusCode: 200,
-    data: `Album with ID : ${albumId} deleted.`,
+    data: `Album with ID : ${id} deleted.`,
   };
 };
 
 // Reorder albums
-module.exports.reorderAlbums = async (position1, position2) => {
+module.exports.reorderAlbums = async (currentPosition, newPosition) => {
   const errors = [];
-  if (!position1) errors.push({ position1: "Required." });
-  if (!position2) errors.push({ position2: "Required." });
+  if (!currentPosition) errors.push({ currentPosition: "Required." });
+  if (!newPosition) errors.push({ newPosition: "Required." });
 
   if (errors.length > 0) {
     return {
@@ -206,8 +214,7 @@ module.exports.reorderAlbums = async (position1, position2) => {
       data: errors,
     };
   }
-
-  await albumModel.reorderAlbums(position1, position2);
+  await albumModel.reorderAlbum(currentPosition, newPosition);
   return {
     statusCode: 200,
     data: {},
@@ -217,10 +224,9 @@ module.exports.reorderAlbums = async (position1, position2) => {
 // Reorder an album
 module.exports.reorderAlbum = async (albumData) => {
   const errors = [];
-  if (!albumData.albumId) errors.push({ albumId: "albumId Required." });
+  if (!albumData.id) errors.push({ id: "Required." });
 
-  if (!albumData.displayPosition)
-    errors.push({ displayPosition: "displayPostion Required." });
+  if (!albumData.displayPosition) errors.push({ displayPosition: "Required." });
 
   if (errors.length > 0) {
     return {
@@ -230,32 +236,24 @@ module.exports.reorderAlbum = async (albumData) => {
     };
   }
 
-  let album = albumModel.findById(albumData.albumId);
-  if (!album.exists) {
-    return {
-      error: true,
-      statusCode: 404,
-      data: `Album with ID ${albumData.albumId} doesn't exists.`,
-    };
-  }
+  let result = await this.findById(albumData.id);
+  if (result.error) return result;
 
-  const result = await this.reorderAlbums(
-    albumData.displayPosition,
-    album.data().displayPosition
+  result = await this.reorderAlbums(
+    result.data.displayPosition,
+    albumData.displayPosition
   );
-  if (!result.error) {
-    return {
-      statusCode: 200,
-      data: albumData,
-    };
-  } else {
-    return result;
-  }
+  if (result.error) return result;
+
+  return {
+    statusCode: 200,
+    data: albumData,
+  };
 };
 
-module.exports.getPhotosById = async (albumId) => {
+module.exports.getPhotosById = async (id) => {
   let errors = [];
-  if (!albumId) {
+  if (!id) {
     errors.push({ id: "Required" });
   }
   if (errors.length > 0) {
@@ -265,14 +263,14 @@ module.exports.getPhotosById = async (albumId) => {
       data: errors,
     };
   }
-  let album = await albumModel.findById(albumId);
+  let album = await albumModel.findById(id);
   if (!album.exists) {
     return {
       error: true,
       statusCode: 400,
-      data: `Alubm with id : ${albumId} doesn't exists.`,
+      data: `Alubm with id : ${id} doesn't exists.`,
     };
   }
-  const photos = await albumPhotosService.findAll(albumId);
+  const photos = await albumPhotosService.findAll(id);
   return photos;
 };

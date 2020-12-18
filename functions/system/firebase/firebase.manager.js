@@ -14,8 +14,8 @@ module.exports.operators = {
   EQUAL_TO: "==",
   LESS_THAN: "<",
   LESS_THAN_OR_EQUAL_TO: "<=",
-  GREATER_THAN: "<",
-  GREATER_THAN_OR_EQUAL_TO: "<=",
+  GREATER_THAN: ">",
+  GREATER_THAN_OR_EQUAL_TO: ">=",
   NOT_EQUAL_TO: "!=",
   ARRAY_CONTAINS: "array-contains",
   ARRAY_CONTAINS_ANY: "array-contains-any",
@@ -34,19 +34,19 @@ module.exports.find = async (collection, filters = []) => {
   //assumes filters is in processing order
   query = filters.reduce((accQuery, filter) => {
     switch (filter.operation) {
-      case this.filters.WHERE:
+      case this.operations.WHERE:
         return accQuery.where(filter.fieldRef, filter.opStr, filter.value);
-      case this.filters.ORDER_BY:
-        return accQuery.orderBy(filter.value);
-      case this.filters.START_AT:
+      case this.operations.ORDER_BY:
+        return accQuery.orderBy(filter.fieldRef);
+      case this.operations.START_AT:
         return accQuery.startAt(filter.value);
-      case this.filters.START_AFTER:
+      case this.operations.START_AFTER:
         return accQuery.startAfter(filter.value);
-      case this.filters.END_AT:
+      case this.operations.END_AT:
         return accQuery.endAt(filter.value);
-      case this.filters.END_BEFORE:
+      case this.operations.END_BEFORE:
         return accQuery.endBefore(filter.value);
-      case this.filters.LIMIT:
+      case this.operations.LIMIT:
         return accQuery.limit(filter.value);
       default:
         return accQuery;
@@ -60,15 +60,17 @@ module.exports.find = async (collection, filters = []) => {
   });
   return docs;
 };
-module.exports.set = async (collection,docId,data) => {
-    const collectionRef = firebase.collection(collection);
-    const docRef = await collectionRef.doc(docId).set(data);
-    return await docRef.get();
-  };
+module.exports.set = async (collection, docId, data) => {
+  const collectionRef = firebase.collection(collection);
+  const docRef = await collectionRef.doc(docId).set(data);
+  return await docRef.get();
+};
 module.exports.create = async (collection, data) => {
   const collectionRef = firebase.collection(collection);
   const docRef = await collectionRef.add(data);
-  return await docRef.get();
+  let doc = await docRef.get();
+  doc = { id: doc.id, ...doc.data() };
+  return doc;
 };
 module.exports.deleteById = async (collection, id) => {
   const collectionRef = firebase.collection(collection);
@@ -79,5 +81,7 @@ module.exports.updateById = async (collection, id, data) => {
   const collectionRef = firebase.collection(collection);
   const docRef = collectionRef.doc(id);
   await docRef.update(data, { merge: true });
-  return await docRef.get();
+  let doc = await docRef.get();
+  doc = { id: doc.id, ...doc.data() };
+  return doc;
 };

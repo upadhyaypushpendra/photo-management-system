@@ -4,7 +4,7 @@ const albumService = require("./../services/album.service");
 
 const router = Router();
 // Get all albums
-router.get("/albums", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const result = await albumService.findAll();
     if (result.error)
@@ -22,7 +22,7 @@ router.get("/albums", async (req, res) => {
 });
 
 // Get Album by ID
-router.get("/albums/:id", async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const result = await albumService.findById(req.params.id);
     if (result.error)
@@ -39,7 +39,7 @@ router.get("/albums/:id", async (req, res) => {
 });
 
 // Create an album
-router.post("/albums", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const result = await albumService.create(req.body);
     if (result.error)
@@ -62,7 +62,7 @@ router.post("/albums", async (req, res) => {
 });
 
 // Update an album by id
-router.patch("/albums/:id", async (req, res) => {
+router.patch("/:id", async (req, res) => {
   try {
     const result = await albumService.update(req.params.id, req.body);
     if (result.error)
@@ -85,7 +85,7 @@ router.patch("/albums/:id", async (req, res) => {
 });
 
 // Delete an album by id
-router.delete("/albums/:id", async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const result = await albumService.delete(req.params.id);
     if (result.error)
@@ -108,9 +108,9 @@ router.delete("/albums/:id", async (req, res) => {
 });
 
 // Reorder albums
-router.post("/albums/reorder", async (req, res) => {
+router.post("/reorder", async (req, res) => {
   try {
-    const result = await albumService.reorder(req.body);
+    const result = await albumService.reorderAlbum(req.body);
     if (result.error)
       failureResponse(
         result.statusCode,
@@ -131,7 +131,7 @@ router.post("/albums/reorder", async (req, res) => {
 });
 
 // Get all photos of an album by id
-router.get("/albums/:id/photos", async (req, res) => {
+router.get("/:id/photos", async (req, res) => {
   try {
     const result = await albumService.getPhotosById(req.params.id);
     if (result.error)

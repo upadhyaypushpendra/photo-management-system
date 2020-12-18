@@ -1,5 +1,4 @@
 const firebaseManager = require("./../system/firebase/firebase.manager");
-const photosCollectionRef = db.collection("photos");
 
 const COLLECTION = "photos";
 
@@ -24,6 +23,7 @@ module.exports.findByLastIdAndLimit = async function (startAfter, limit) {
     operation: firebaseManager.operations.LIMIT,
     value: limit || 30,
   });
+  
   return await firebaseManager.find(COLLECTION, filters);
 };
 

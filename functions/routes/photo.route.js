@@ -8,7 +8,7 @@ const {
 
 const router = Router();
 // Get photos
-router.get("/photos", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const result = await photoService.findByLastIdAndLimit(
       req.query.last,
@@ -30,7 +30,7 @@ router.get("/photos", async (req, res) => {
 });
 
 // Get photo by id
-router.get("/photos/:id", async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const result = await photoService.findById(req.params.id);
     if (result.error)
@@ -48,7 +48,7 @@ router.get("/photos/:id", async (req, res) => {
 });
 
 // Create a photo
-router.post("/photos", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const result = await photoService.create(req.body);
     if (result.error)
@@ -66,7 +66,7 @@ router.post("/photos", async (req, res) => {
 });
 
 // Update an photo by id
-router.patch("/photos/:id", async (req, res) => {
+router.patch("/:id", async (req, res) => {
   try {
     const result = await photoService.update(req.params.id, req.body);
     if (result.error)
@@ -84,7 +84,7 @@ router.patch("/photos/:id", async (req, res) => {
 });
 
 // Delete photo by id
-router.delete("/photos/:id", async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     const result = await photoService.delete(req.params.id);
     if (result.error)

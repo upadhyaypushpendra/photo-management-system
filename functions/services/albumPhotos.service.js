@@ -69,7 +69,7 @@ module.exports.deletePhoto = async function (albumId, photoId) {
   }
 };
 
-module.exports.updatePhoto = async function (albumId, photoId, photo) {
+module.exports.updatePhoto = async function (albumId, photo) {
   let errors = [];
   if (!albumId) {
     errors.push({ id: "Required" });
@@ -87,7 +87,7 @@ module.exports.updatePhoto = async function (albumId, photoId, photo) {
       data: errors,
     };
   } else {
-    let photo = await albumPhotosModel.updatePhoto(albumId, photoId, photo);
+    let photo = await albumPhotosModel.updatePhoto(albumId, photo.id, photo);
     return {
       statusCode: 200,
       data: photo,

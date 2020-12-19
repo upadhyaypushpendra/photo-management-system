@@ -17,17 +17,35 @@ module.exports.register = async (user) => {
       auth: false,
       ...result,
     };
-  let token = jwt.sign({ id: result.data.id }, process.env.JWT_SECRET_KEY, {
-    expiresIn: "2h",
+  let apiToken = jwt.sign({ id: result.data.id }, process.env.JWT_SECRET_KEY, {
+    expiresIn: 15 * 60, // expires in 15 minutes
   });
-  let refreshToken = jwt.sign({}, process.env.JWT_SECRET_KEY, {
-    expiresIn: "2d",
+  let refreshToken = jwt.sign({ id: result.data.id }, process.env.JWT_SECRET_KEY, {
+    expiresIn: "2h", // expires in 2 hours
   });
   return {
     statusCode: 200,
     data: {
       auth: true,
-      token,
+      apiToken,
+      refreshToken,
+    },
+  };
+};
+
+module.exports.refreshToken = async (userId) => {
+    
+  let apiToken = jwt.sign({ id: userId }, process.env.JWT_SECRET_KEY, {
+    expiresIn: 15*60, // expires in 15 minutes
+  });
+  let refreshToken = jwt.sign({ id: userId }, process.env.JWT_SECRET_KEY, {
+    expiresIn: "2h", // expires in 2 hours
+  });
+  return {
+    statusCode: 200,
+    data: {
+      auth: true,
+      apiToken,
       refreshToken,
     },
   };
@@ -78,10 +96,11 @@ module.exports.login = async (user) => {
       statusCode: 401,
       data: { auth: false, token: null, refreshToken: null },
     };
+
   let apiToken = jwt.sign({ id: result.data.id }, process.env.JWT_SECRET_KEY, {
-    expiresIn: 15 * 60, // expires in 15 mins
+    expiresIn: 15 * 60, // expires in 15 minutes
   });
-  let refreshToken = jwt.sign({}, process.env.JWT_SECRET_KEY, {
+  let refreshToken = jwt.sign({ id: result.data.id }, process.env.JWT_SECRET_KEY, {
     expiresIn: "2h", // expires in 2 hours
   });
   return {

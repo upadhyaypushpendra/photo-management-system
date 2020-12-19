@@ -9,6 +9,33 @@ const VerifyToken = require("./verifyToken");
 
 const router = Router();
 
+router.get("/refreshToken",VerifyToken,async (req,res)=>{
+  try {
+    const result = await authService.refreshToken(req.userId);
+    if (result.error)
+      failureResponse(
+        result.statusCode,
+        "Unable to refresh token.",
+        result.data,
+        res
+      );
+    else
+      successResponse(
+        result.statusCode,
+        "Token refreshed successfully.",
+        result.data,
+        res
+      );
+  } catch (error) {
+    failureResponse(
+      500,
+      "There was a problem in refreshing token.",
+      error.message,
+      res
+    );
+  }
+});
+
 router.post("/register", async (req, res) => {
   try {
     const result = await authService.register(req.body);

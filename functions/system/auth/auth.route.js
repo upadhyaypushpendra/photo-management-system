@@ -1,4 +1,6 @@
 const { Router } = require("express");
+var httpContext = require("express-http-context");
+
 const authService = require("./auth.service");
 const {
   failureResponse,
@@ -9,9 +11,9 @@ const VerifyToken = require("./verifyToken");
 
 const router = Router();
 
-router.get("/refreshToken",VerifyToken,async (req,res)=>{
+router.get("/refreshToken", async (req, res) => {
   try {
-    const result = await authService.refreshToken(req.userId);
+    const result = await authService.refreshToken(req.headers.refreshToken);
     if (result.error)
       failureResponse(
         result.statusCode,
@@ -65,7 +67,8 @@ router.post("/register", async (req, res) => {
 
 router.get("/me", VerifyToken, async (req, res) => {
   try {
-    let result = await authService.me(req.userId);
+    let userId = httpContext.get('user');
+    let result = await authService.me(userId);
     if (result.error)
       failureResponse(
         result.statusCode,

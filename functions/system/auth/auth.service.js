@@ -33,8 +33,7 @@ module.exports.register = async (user) => {
   };
 };
 
-module.exports.refreshToken = async (userId) => {
-    
+module.exports.refreshToken = async (userId) => {    
   let apiToken = jwt.sign({ id: userId }, process.env.JWT_SECRET_KEY, {
     expiresIn: 15*60, // expires in 15 minutes
   });

@@ -1,20 +1,24 @@
 const functions = require("firebase-functions");
 const express = require("express");
 const bodyParser = require("body-parser");
+const httpContext = require('express-http-context');
 
+const verifyToken = require("./system/auth/verifyToken");
 const albumsRouter = require("./routes/album.route");
 const photosRouter = require("./routes/photo.route");
 const authRouter = require("./system/auth/auth.route");
 
 
-const main = express();
+const app = express();
 
-main.use(bodyParser.json());
-main.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-main.use("/api/v1/auth",authRouter)
-main.use("/api/v1/albums", albumsRouter);
-main.use("/api/v1/photos",photosRouter);
+app.use(httpContext.middleware);
+app.use("/api/v1/auth",authRouter)
+app.use(verifyToken);
+app.use("/api/v1/albums", albumsRouter);
+app.use("/api/v1/photos",photosRouter);
 
-const webApi = functions.https.onRequest(main);
+const webApi = functions.https.onRequest(app);
 exports.webApi = webApi;

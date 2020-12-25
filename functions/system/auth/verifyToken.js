@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
+const httpContext = require("express-http-context");
 const { failureResponse } = require("./../../utils/response.util");
-const dotenv = require('dotenv');
-const { decode } = require("firebase-functions/lib/providers/https");
+const dotenv = require("dotenv");
+
 dotenv.config();
 
 function verifyToken(req, res, next) {
@@ -11,7 +12,7 @@ function verifyToken(req, res, next) {
   }
   try {
     let decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    req.userId = decoded.id;
+    httpContext.set('user', decoded.id);
     next();
   } catch (error) {
     return failureResponse(

@@ -1,9 +1,12 @@
+const httpContext = require("express-http-context");
 const albumModel = require("./../models/album.model");
 const configService = require("../system/config/config.service");
 const photoService = require("./photo.service");
 const albumPhotosService = require("./albumPhotos.service");
+const { logger } = require("firebase-functions");
 
 module.exports.findAll = async () => {
+  logger.info(`${httpContext.get('user')}:albumSerive:findAll`);
   const albums = await albumModel.find();
   return {
     statusCode: 200,
